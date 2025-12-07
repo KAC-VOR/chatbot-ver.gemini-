@@ -3,42 +3,76 @@ from google import genai
 from google.genai import types
 import os
 
-
-# --------------------------------------------------------------------
-# 1. API 키 설정 [사용자 설정 구간]
-# --------------------------------------------------------------------
-# 1. API 키를 입력하세요
-if "GOOGLE_API_KEY" in st.secrets:
-    # GitHub에 올린 뒤, Streamlit 서버에서 실행될 때는 여기서 키를 가져옵니다.
-    API_KEY = st.secrets["GOOGLE_API_KEY"]
-else:
-    # 내 컴퓨터에서 테스트할 때는 이 키를 사용합니다. (따옴표 안에 키 입력)
-    API_KEY = "xxxxxxxxxxxxx"
-
-# --------------------------------------------------------------------
-# 2. 저장소 ID 설정 (1단계 실행 결과로 나온 ID들을 복사해서 여기에 붙여넣으세요)
-# (없는 항목은 비워두거나 줄을 지워도 됩니다)
-# --------------------------------------------------------------------
-VECTOR_STORE_IDS = {
-    "인수인계서": "fileSearchStores/8scrfafyxnfi-u9i5vtvyrfoe",
-    "회사내규": "fileSearchStores/여기에_복사한_ID_붙여넣기",
-    "장비매뉴얼": "fileSearchStores/xqjyvxsq7rlp-4g8fuqnmt2x4"
-}
-# -----------------------
-
-# 클라이언트 초기화 (New SDK)
-client = genai.Client(api_key=API_KEY)
-
-# 페이지 기본 설정
+# [중요] 페이지 설정은 반드시 코드의 가장 맨 윗부분(import 바로 다음)에 딱 1번만 와야 합니다.
 st.set_page_config(page_title="사내 지식 챗봇", layout="wide")
 
-# 사이드바: 지식 저장소 선택
+
+# ==========================================
+# 🔐 [보안] 로그인 기능 구현
+# ==========================================
+def check_password():
+    """아이디와 비밀번호를 확인하는 함수"""
+    if st.session_state.get("password_correct", False):
+        return True
+
+    st.title("🔒 로그인이 필요합니다")
+
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        username = st.text_input("아이디")
+        password = st.text_input("비밀번호", type="password")
+
+    if st.button("로그인"):
+        if "passwords" in st.secrets and username in st.secrets["passwords"]:
+            if st.secrets["passwords"][username] == password:
+                st.session_state["password_correct"] = True
+                st.rerun()
+            else:
+                st.error("비밀번호가 틀렸습니다.")
+        else:
+            st.error("등록되지 않은 아이디입니다.")
+
+    return False
+
+
+# 로그인을 통과하지 못하면 여기서 중단
+if not check_password():
+    st.stop()
+
+# ==========================================
+# 👋 [성공] 여기서부터 챗봇 메인 코드
+# ==========================================
+
+# 1. API 키 설정
+if "GOOGLE_API_KEY" in st.secrets:
+    API_KEY = st.secrets["GOOGLE_API_KEY"]
+else:
+    # ⚠️ GitHub에 올릴 때는 반드시 이 부분을 지우거나 가짜 값으로 두세요!
+    API_KEY = "xxxxxxxxxxxxxxxxxxxxx"
+# 2. 저장소 ID 설정
+VECTOR_STORE_IDS = {
+    "인수인계서": "fileSearchStores/8scrfafyxnfi-u9i5vtvyrfoe",
+    # "회사내규": "아직_ID가_없으므로_주석처리",
+    "장비매뉴얼": "fileSearchStores/xqjyvxsq7rlp-4g8fuqnmt2x4"
+}
+
+# 클라이언트 초기화
+client = genai.Client(api_key=API_KEY)
+
+# (중복된 st.set_page_config 삭제됨)
+
+# 사이드바 설정
 st.sidebar.title("🗂️ 지식 저장소 선택")
-# ID가 있는(유효한) 카테고리만 선택지로 표시
+
+# 로그아웃 버튼 추가 (선택사항)
+if st.sidebar.button("로그아웃"):
+    st.session_state["password_correct"] = False
+    st.rerun()
+
 available_categories = [k for k, v in VECTOR_STORE_IDS.items() if "fileSearchStores" in v]
 
 if not available_categories:
-    st.error("설정된 저장소 ID가 없습니다. app.py 코드를 열어 VECTOR_STORE_IDS를 수정해주세요.")
+    st.error("유효한 저장소 ID가 없습니다. 코드를 확인해주세요.")
     st.stop()
 
 selected_category = st.sidebar.radio(
@@ -50,44 +84,39 @@ selected_category = st.sidebar.radio(
 st.title(f"💬 {selected_category} 챗봇")
 st.caption("업로드된 문서를 바탕으로 AI가 답변합니다.")
 
-# 세션 상태 초기화 (대화 기록 유지)
+# 대화 기록 관리
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "current_category" not in st.session_state:
     st.session_state.current_category = selected_category
 
-# 카테고리를 바꾸면 대화 내용 초기화
 if st.session_state.current_category != selected_category:
     st.session_state.messages = []
     st.session_state.current_category = selected_category
 
-# 이전 대화 내용 화면에 표시
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 사용자 질문 입력
+# 질문 처리
 if prompt := st.chat_input("궁금한 내용을 물어보세요..."):
-    # 1. 사용자 질문 표시
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # 2. AI 답변 생성
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         message_placeholder.markdown("🔍 문서를 검색하고 있습니다...")
 
         try:
-            # 선택된 카테고리의 저장소 ID 가져오기
             store_id = VECTOR_STORE_IDS[selected_category]
 
-            # [핵심 수정] 최신 라이브러리(V1) 문법으로 답변 요청
+            # 모델 설정 (혹시 2.5 버전 오류가 나면 gemini-1.5-flash-002 로 변경하세요)
             response = client.models.generate_content(
-                model='gemini-2.5-flash',  # 속도가 빠르고 성능이 좋은 모델
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    temperature=0.3,  # 0에 가까울수록 사실 기반 답변
+                    temperature=0.3,
                     tools=[
                         types.Tool(
                             file_search=types.FileSearch(
@@ -98,15 +127,14 @@ if prompt := st.chat_input("궁금한 내용을 물어보세요..."):
                 )
             )
 
-            # 답변 텍스트 추출
             full_response = response.text
-
-            # 화면에 출력
             message_placeholder.markdown(full_response)
-
-            # 대화 기록에 저장
             st.session_state.messages.append({"role": "assistant", "content": full_response})
 
         except Exception as e:
-            error_msg = f"오류가 발생했습니다: {str(e)}"
+            # 에러 메시지를 좀 더 친절하게 표시
+            if "NOT_FOUND" in str(e):
+                error_msg = "모델을 찾을 수 없습니다. 코드에서 모델명을 'gemini-1.5-flash-002'로 변경해보세요."
+            else:
+                error_msg = f"오류가 발생했습니다: {str(e)}"
             message_placeholder.error(error_msg)
