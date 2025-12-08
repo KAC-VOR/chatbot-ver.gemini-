@@ -4,7 +4,7 @@ from google.genai import types
 import os
 
 # [중요] 페이지 설정은 반드시 코드 최상단(import 바로 다음)에 한 번만 호출해야 합니다.
-st.set_page_config(page_title="사내 지식 챗봇", layout="wide")
+st.set_page_config(page_title="사내 지식 저장소", layout="wide")
 
 
 # --- 로그인 기능 ---
@@ -52,9 +52,10 @@ else:
 
 # 질문 대상이 될 지식 저장소(Vector Store) ID 목록
 VECTOR_STORE_IDS = {
-    "인수인계서": "fileSearchStores/akeoiuo84m6g-rj6t83gogxzu",
-    # "회사내규": "아직_ID가_없으므로_주석처리", # 예시: 새 저장소 추가
-    "장비매뉴얼": "fileSearchStores/i4hjxqmty7uu-ecb1998kaknf"
+    "인수인계서": "fileSearchStores/hkn37g67pu4l-y7ukvazvyx66",
+    "회사내규": "fileSearchStores/1ihsw5g8z1sf-lsgc7fxn2fek", # 예시: 새 저장소 추가
+    "장비매뉴얼": "fileSearchStores/zjf1by3lj71j-evdnublj91qh",
+    "장애복구" : "fileSearchStores/4t7fu00mriw0-vqwlxjafm4da"
 }
 
 # GenAI 클라이언트 초기화
