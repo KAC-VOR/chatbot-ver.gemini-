@@ -4,7 +4,7 @@ from google.genai import types
 import os
 
 # [중요] 페이지 설정은 반드시 코드 최상단(import 바로 다음)에 한 번만 호출해야 합니다.
-st.set_page_config(page_title="사내 지식 저장소", layout="wide")
+st.set_page_config(page_title="사내 지식 저장소(표지소관리부)", layout="wide")
 
 
 # --- 로그인 기능 ---
@@ -63,7 +63,11 @@ client = genai.Client(api_key=API_KEY)
 
 
 # --- 사이드바 UI ---
+<<<<<<< HEAD
 st.sidebar.title("🗂️ 지식 저장소 선택하세요")
+=======
+st.sidebar.title("🗂️ 지식 저장소 선택")
+>>>>>>> 61dff3df27a2b4b9536606ae018484abe36c59b7
 
 # 로그아웃 버튼
 if st.sidebar.button("로그아웃"):
