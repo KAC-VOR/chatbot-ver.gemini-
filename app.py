@@ -63,11 +63,7 @@ client = genai.Client(api_key=API_KEY)
 
 
 # --- 사이드바 UI ---
-<<<<<<< HEAD
 st.sidebar.title("🗂️ 지식 저장소 선택하세요")
-=======
-st.sidebar.title("🗂️ 지식 저장소 선택")
->>>>>>> 61dff3df27a2b4b9536606ae018484abe36c59b7
 
 # 로그아웃 버튼
 if st.sidebar.button("로그아웃"):
